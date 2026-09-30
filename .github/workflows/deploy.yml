@@ -1,0 +1,49 @@
+name: Déploiement GitHub Pages
+
+# Publie le site à chaque push sur main et régénère les données ouvertes chaque
+# lundi (Paris Data, Saemes, Indigo, BNLS, OpenStreetMap).
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '17 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Rafraîchir les données ouvertes
+        if: github.event_name != 'push'
+        run: npm run data -- --refresh || echo "::warning::Source indisponible, les données du dépôt sont conservées"
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

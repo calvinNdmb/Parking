@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="fr" data-theme="day">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>ParkPrix Paris — le prix du stationnement sur une carte</title>
+    <meta
+      name="description"
+      content="Carte interactive des prix du stationnement à Paris : voirie (zones 1 et 2, grille progressive officielle) et parkings, à partir des données ouvertes."
+    />
+    <meta name="theme-color" content="#33ccff" />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <div id="map" role="region" aria-label="Carte des prix du stationnement"></div>
+
+    <div class="top">
+      <div class="searchbar">
+        <span class="brand" aria-hidden="true">P</span>
+        <input id="search-input" type="search" placeholder="Où voulez-vous vous garer ?" autocomplete="off" spellcheck="false" aria-label="Rechercher une adresse ou un lieu à Paris" />
+        <button id="search-clear" class="icon-btn" type="button" hidden aria-label="Effacer la recherche"></button>
+        <ul id="search-results" role="listbox" hidden></ul>
+      </div>
+      <div class="chips" id="vehicle-chips" role="radiogroup" aria-label="Type de véhicule"></div>
+      <div class="chips" id="duration-chips" role="radiogroup" aria-label="Durée de stationnement"></div>
+      <div class="time-pop" id="time-pop" hidden>
+        <label for="time-input">Arrivée (heure de Paris)</label>
+        <input id="time-input" type="datetime-local" step="900" />
+        <div class="time-actions">
+          <button type="button" class="btn" id="time-now">Maintenant</button>
+          <button type="button" class="btn btn-primary" id="time-ok">Valider</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="status" id="status" role="status"></div>
+
+    <div class="fabs">
+      <button class="fab" id="btn-locate" type="button" aria-label="Me localiser" title="Me localiser"></button>
+      <button class="fab" id="btn-theme" type="button" aria-label="Basculer le mode nuit" title="Mode jour / nuit"></button>
+      <button class="fab" id="btn-layers" type="button" aria-label="Calques" title="Calques" aria-expanded="false"></button>
+    </div>
+
+    <div class="layers-panel" id="layers-panel" hidden>
+      <h3>Afficher</h3>
+      <label><input type="checkbox" data-layer="street" checked /> Places sur rue</label>
+      <label><input type="checkbox" data-layer="parkings" checked /> Parkings</label>
+      <label><input type="checkbox" data-layer="subscribers" /> Parkings réservés aux abonnés</label>
+      <label><input type="checkbox" data-layer="zones" checked /> Zones tarifaires</label>
+      <label><input type="checkbox" data-layer="belib" /> Bornes Belib'</label>
+      <label><input type="checkbox" data-layer="coverage" /> Couverture des données</label>
+    </div>
+
+    <button class="coverage-badge" id="btn-coverage" type="button"></button>
+    <div class="legend" id="legend" aria-label="Légende des couleurs"></div>
+
+    <section class="sheet" id="sheet" data-state="peek">
+      <button class="sheet-handle" id="sheet-handle" type="button" aria-label="Agrandir ou réduire le panneau"><span></span></button>
+      <div class="sheet-body" id="sheet-body"></div>
+    </section>
+
+    <dialog id="coverage-dialog" aria-labelledby="coverage-title">
+      <div class="dialog-body" id="coverage-body"></div>
+    </dialog>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
