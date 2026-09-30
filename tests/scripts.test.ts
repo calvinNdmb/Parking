@@ -5,6 +5,9 @@ import { streetName, titleCase } from '../scripts/lib/text.mjs';
 import { parseCsv } from '../scripts/lib/bnls.mjs';
 // @ts-expect-error — modules JS du pipeline (sans types)
 import { distanceM, pointInGeometry, simplifyLine } from '../scripts/lib/geo.mjs';
+// @ts-expect-error — modules JS du pipeline (sans types)
+import { VOIRIE_CATEGORIES } from '../scripts/lib/categories.mjs';
+import { VOIRIE_CATEGORIES_V1 } from '../packages/core/src/data';
 
 describe('pipeline : textes', () => {
   it('met en forme les noms de voies', () => {
@@ -37,5 +40,11 @@ describe('pipeline : géométrie', () => {
   });
   it('simplifie une ligne presque droite', () => {
     expect(simplifyLine([[2.3, 48.85], [2.30001, 48.850001], [2.30015, 48.850001], [2.3002, 48.85]], 1)).toHaveLength(2);
+  });
+});
+
+describe('contrat de données v1', () => {
+  it('le pipeline et le cœur partagent le même ordre de catégories', () => {
+    expect(VOIRIE_CATEGORIES).toEqual(VOIRIE_CATEGORIES_V1);
   });
 });

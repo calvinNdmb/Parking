@@ -1,0 +1,10 @@
+{
+  // Aucune API de navigateur (pas de « DOM ») : le cœur doit tourner tel quel
+  // dans React Native / Expo, Node et le web.
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023"],
+    "types": []
+  },
+  "include": ["src"]
+}

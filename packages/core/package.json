@@ -1,0 +1,13 @@
+{
+  "name": "@parkprix/core",
+  "version": "0.2.0",
+  "private": true,
+  "description": "Cœur ParkPrix sans dépendance à un navigateur : moteur de prix, décodage des données, style de carte façon Waze et calques (MapLibre GL JS et MapLibre React Native).",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "sideEffects": false
+}

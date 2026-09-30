@@ -30,8 +30,11 @@ import {
 } from './lib/geo.mjs';
 import { Dict, streetName, titleCase } from './lib/text.mjs';
 import { parseBnlsCsv } from './lib/bnls.mjs';
+import { VOIRIE_CATEGORIES } from './lib/categories.mjs';
 
-const OUT_DIR = path.resolve('public/data');
+// API de données statique v1, servie par le site et consommable par une app Expo (voir docs/DATA_API.md).
+const SCHEMA_VERSION = 1;
+const OUT_DIR = path.resolve('apps/web/public/data/v1');
 const ODP = 'https://opendata.paris.fr/api/explore/v2.1/catalog/datasets';
 const odpExport = (id, format = 'geojson') => `${ODP}/${id}/exports/${format}`;
 const odpPage = (id) => `https://opendata.paris.fr/explore/dataset/${id}/`;
@@ -129,7 +132,7 @@ async function buildArrondissements() {
 // ---------------------------------------------------------------------------
 // 3. Stationnement sur voirie (emprises)
 // ---------------------------------------------------------------------------
-const VOIRIE_CATEGORIES = ['mixte', 'rotatif', 'gratuit', 'moto', 'pmr', 'electrique', 'livraison'];
+const VELO_REGIMES = new Set(['Vélos', 'Box à vélos', 'Vélo-cargo']);
 function voirieCategory(p) {
   switch (p.regpri) {
     case 'PAYANT MIXTE':
@@ -145,7 +148,8 @@ function voirieCategory(p) {
     case 'LIVRAISON':
       return 'livraison';
     case '2 ROUES':
-      return String(p.regpar ?? '').startsWith('Motos payant') ? 'moto' : null;
+      if (String(p.regpar ?? '').startsWith('Motos payant')) return 'moto';
+      return VELO_REGIMES.has(p.regpar) ? 'velo' : null;
     default:
       return null;
   }
@@ -309,6 +313,10 @@ async function buildParisCarParks() {
           placesPmr: r.nb_pmr ?? null,
           placesMoto: r.nb_2_rm ?? null,
           placesVelo: r.nb_velo ?? null,
+          motoAccess: r.nb_2_rm > 0 || r.pass_2rm === 'OUI' ? true : null,
+          veloAccess: r.nb_velo > 0 || num(r.tvelo_1m_e) != null ? true : null,
+          covered: true,
+          kind: 'underground',
           placesEv: r.nb_voitures_electriques ?? null,
           heightMax: r.hauteur_max ? round(r.hauteur_max / 100, 2) : null,
           relay: r.parc_relai === 'OUI',
@@ -323,6 +331,7 @@ async function buildParisCarParks() {
             evMonth: num(r.abve_1m_e),
             pmrMonth: num(r.abpmr_1m_e),
             veloMonth: num(r.tvelo_1m_e),
+            veloDay: num(r.tvelo_1j_e),
           },
           info: (r.info ?? []).filter(Boolean),
           updated: (r.mis_a_jour ?? '').slice(0, 10) || null,
@@ -406,8 +415,12 @@ async function buildOsmCarParks(parisGeoms) {
       hours: t.opening_hours === '24/7' ? '24 h/24' : (t.opening_hours ?? null),
       places: capacity,
       placesPmr: num(t['capacity:disabled']),
-      placesMoto: null,
-      placesVelo: null,
+      placesMoto: num(t['capacity:motorcycle']),
+      placesVelo: num(t['capacity:bicycle']),
+      motoAccess: t.motorcycle === 'yes' || num(t['capacity:motorcycle']) > 0 ? true : t.motorcycle === 'no' ? false : null,
+      veloAccess: t.bicycle === 'yes' || num(t['capacity:bicycle']) > 0 ? true : null,
+      covered,
+      kind: ['underground', 'multi-storey', 'rooftop', 'surface'].includes(kind) ? kind : 'surface',
       placesEv: num(t['capacity:charging']),
       heightMax: num(String(t.maxheight ?? '').replace(/\s*m$/, '')),
       relay: t.park_ride === 'yes',
@@ -501,6 +514,10 @@ async function buildSaemesCarParks(parisGeoms) {
           placesPmr: null,
           placesMoto: null,
           placesVelo: null,
+          motoAccess: r.acces_motos === 'oui' ? true : r.acces_motos === 'non' ? false : null,
+          veloAccess: r.acces_velos === 'oui' ? true : r.acces_velos === 'non' ? false : null,
+          covered: true,
+          kind: 'underground',
           placesEv: null,
           ev: r.bornes_de_recharge_vehicule_electrique === 'oui',
           heightMax: num(r.hauteur_maximum),
@@ -557,6 +574,10 @@ async function buildIndigoCarParks(parisGeoms) {
         placesPmr: null,
         placesMoto: null,
         placesVelo: null,
+        motoAccess: null,
+        veloAccess: null,
+        covered: true,
+        kind: 'underground',
         placesEv: null,
         heightMax: null,
         relay: false,
@@ -624,6 +645,13 @@ function mergeCarParks(lists) {
         target.pricesSource = p.source;
       }
       target.motoPrices ??= p.motoPrices;
+      target.placesMoto ??= p.placesMoto;
+      target.placesVelo ??= p.placesVelo;
+      target.motoAccess ??= p.motoAccess;
+      target.veloAccess ??= p.veloAccess;
+      // OpenStreetMap précise la structure réelle (souterrain / en élévation).
+      if (p.source === 'osm' && p.kind && p.kind !== 'surface') target.kind = p.kind;
+      target.covered ||= p.covered;
       target.forfaits ??= p.forfaits;
       target.url ??= p.url;
       target.phone ??= p.phone;
@@ -840,7 +868,9 @@ async function main() {
   const pricedParks = publicParks.filter((p) => p.prices);
   const placesIn = (list) => list.reduce((s, p) => s + (p.places ?? 0), 0);
   const meta = {
+    schemaVersion: SCHEMA_VERSION,
     generatedAt: new Date().toISOString(),
+    categories: VOIRIE_CATEGORIES,
     tariffs: zones.tariffs,
     coverage: {
       spatial: coverage.spatial,
@@ -858,6 +888,7 @@ async function main() {
         places: placesIn(publicParks),
         pricedPlaces: placesIn(pricedParks),
         subscribersOnly: merged.parks.length - publicParks.length,
+        covered: merged.parks.filter((p) => p.covered).length,
         sources: merged.stats,
       },
       places: {
